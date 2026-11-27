@@ -13,12 +13,12 @@ export function createBilling(pool){return async(subject,req)=>{
  let result;
  if(req.method==='GET'){
  const w=(await c.query('select w.id,w.plan_code,p.name,p.max_brands,p.max_connections,p.max_monthly_posts from faro.workspaces w join faro.plans p on p.code=w.plan_code where w.id=$1',[input.workspace_id])).rows[0];if(!w){await c.query('rollback');return reply({error:'Espacio no disponible'},403)}
- const plans=(await c.query('select code,name,max_brands,max_connections,max_monthly_posts from faro.plans order by max_brands')).rows;
+ const plans=(await c.query('select code,name,max_brands,max_connections,max_monthly_posts,monthly_price_cents,annual_price_cents,currency from faro.plans order by monthly_price_cents')).rows;
  const [from,to]=utcMonth();
  const counts=(await c.query("select (select count(*)::int from faro.brands where workspace_id=$1) as brands,(select count(*)::int from faro.connections c join faro.brands b on b.id=c.brand_id where b.workspace_id=$1 and c.status='connected') as connections,(select count(*)::int from faro_private.publication_jobs j join faro.brands b on b.id=j.brand_id where b.workspace_id=$1 and j.scheduled_at >= $2 and j.scheduled_at < $3 and j.status<>'cancelled') as posts",[w.id,from,to])).rows[0];
  const requests=(await c.query('select id,requested_plan,status,created_at,resolved_at from faro.plan_requests where workspace_id=$1 order by created_at desc limit 30',[w.id])).rows;
  const sub=(await c.query('select provider,state,period_end from faro.billing_subscriptions where workspace_id=$1',[w.id])).rows[0]??null;
- result={data:{plan:w.plan_code,plans,usage:{brands:quota(counts.brands,w.max_brands),connections:quota(counts.connections,w.max_connections),posts:quota(counts.posts,w.max_monthly_posts)},period:{from,to,timezone:'UTC'},requests,subscription:sub,checkout_enabled:false,prices_configured:false}};
+ result={data:{plan:w.plan_code,plans,usage:{brands:quota(counts.brands,w.max_brands),connections:quota(counts.connections,w.max_connections),posts:quota(counts.posts,w.max_monthly_posts)},period:{from,to,timezone:'UTC'},requests,subscription:sub,checkout_enabled:false,prices_configured:true}};
  }else if(path==='/v1/billing/request'){
  const r=await c.query("insert into faro.plan_requests(workspace_id,requested_plan) select id,$2 from faro.workspaces where id=$1 and plan_code<>$2 on conflict(workspace_id) where status='pending' do nothing returning id,requested_plan,status",[input.workspace_id,input.requested_plan]);
  if(!r.rowCount){await c.query('rollback');return reply({error:'Solicitud pendiente o plan no disponible'},409)}result={data:r.rows[0]};
