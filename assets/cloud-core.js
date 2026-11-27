@@ -14,7 +14,8 @@ export function cloudClient(config,fetcher=fetch){
   if(authenticated&&(!session||Date.now()>=session.expiry)){session=null;throw Error('Sesión no disponible. Inicia sesión de nuevo.')}
   const res=await fetcher(c.url+path,{method,redirect:'error',cache:'no-store',credentials:'omit',headers:{apikey:c.key,...(authenticated?{Authorization:'Bearer '+session.token}:{}),...(body?{'Content-Type':'application/json'}:{}),...headers},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});
   if(!res.ok){if(authenticated&&res.status===401)session=null;throw Error(res.status===401?'Acceso no autorizado.':res.status===429?'Demasiadas solicitudes. Intenta más tarde.':'No se pudo completar la solicitud.')}
-  return res.status===204?null:res.json();
+  if(res.status===204)return null;
+  const raw=await res.text();return raw?JSON.parse(raw):null;
  }
  return {
   async signIn(email,password){session=null;const v=await request('/auth/v1/token?grant_type=password',{method:'POST',body:{email,password},authenticated:false});if(!v.access_token||!v.user?.id||!Number.isFinite(v.expires_in)||v.expires_in<=0)throw Error('Respuesta de autenticación inválida');session={token:v.access_token,user:v.user.id,email:v.user.email||email,expiry:Date.now()+v.expires_in*1000};return {id:session.user,email:session.email}},
