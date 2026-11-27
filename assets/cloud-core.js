@@ -38,11 +38,12 @@ export function cloudClient(config,fetcher=fetch){
    const v=await request('/auth/v1/token?grant_type=pkce',{method:'POST',body:{auth_code:code,code_verifier:verifier},authenticated:false});
    if(!v?.access_token||!v.user?.id||!Number.isFinite(v.expires_in)||v.expires_in<=0)throw Error('Respuesta de autenticación inválida');
    session={token:v.access_token,user:v.user.id,expiry:Date.now()+v.expires_in*1000};
-   try{const user=await request('/auth/v1/user');if(user.id!==session.user||user.app_metadata?.farosocial_access!==true)throw Error('Cuenta no autorizada');return {id:user.id,email:user.email||'',name:user.user_metadata?.full_name||user.user_metadata?.name||''}}
+   try{const user=await request('/auth/v1/user');if(user.id!==session.user||user.app_metadata?.farosocial_access!==true)throw Error('Cuenta no autorizada');session.admin=user.app_metadata?.farosocial_admin===true;return {id:user.id,email:user.email||'',name:user.user_metadata?.full_name||user.user_metadata?.name||'',admin:session.admin}}
    catch(e){try{await request('/auth/v1/logout?scope=local',{method:'POST'})}catch{}session=null;throw e}
   },
   async signOut(){try{if(session&&Date.now()<session.expiry)await request('/auth/v1/logout?scope=local',{method:'POST'})}finally{session=null}},
   isSignedIn(){return Boolean(session&&Date.now()<session.expiry)},
+  async adminReport(page=0,plan='all'){if(!session?.admin)throw Error('Acceso administrativo denegado');if(!Number.isInteger(page)||page<0||page>10000||!['all','free','pro','business'].includes(plan))throw Error('Filtro inválido');return request('/rest/v1/rpc/faro_admin_report',{method:'POST',body:{p_page:page,p_plan:plan}})},
   async workspaces(){return request('/rest/v1/faro_workspaces?select=id,name,plan_code,faro_plans(name,max_brands,max_connections,max_monthly_posts)')},
   async createWorkspace(name){const n=name.trim();if(n.length<1||n.length>80)throw Error('Nombre inválido');return request('/rest/v1/faro_workspaces',{method:'POST',body:{name:n},headers:{Prefer:'return=minimal'}})},
   async brands(workspaceId){return request('/rest/v1/faro_brands?'+new URLSearchParams({select:'id,name,slot,created_at',workspace_id:'eq.'+requireId(workspaceId),order:'slot.asc'}))},

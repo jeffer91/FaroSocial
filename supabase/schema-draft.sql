@@ -1,4 +1,4 @@
--- Borrador SaaS 0.4 para un proyecto nuevo y exclusivo. No aplicado.
+-- Borrador SaaS 0.5 para un proyecto nuevo y exclusivo. No aplicado.
 begin;
 create table public.faro_plans (
  code text primary key check(code in ('free','pro','business')),
@@ -58,4 +58,49 @@ create policy connections_read on public.faro_connections for select to authenti
  where b.id=brand_id and w.owner_id=(select auth.uid())));
 -- Las plazas únicas y RLS limitan las marcas. Conexiones y publicaciones todavía no tienen cuotas operativas.
 -- No conceder permisos de escritura a clientes sobre plan_code, conexiones ni owner_id.
+-- Administración 0.5: reporte limitado, sin acceso directo global a las tablas.
+-- Mantener faro_private fuera de los esquemas expuestos de PostgREST.
+create schema faro_private;
+revoke all on schema faro_private from public,anon,authenticated;
+grant usage on schema faro_private to authenticated;
+create function faro_private.admin_report(p_page integer, p_plan text)
+returns jsonb language plpgsql security definer stable set search_path='' as $
+declare result jsonb;
+begin
+ if auth.uid() is null or not exists (
+  select 1 from auth.users u join auth.sessions s on s.user_id=u.id
+  where u.id=auth.uid() and s.id::text=auth.jwt()->>'session_id'
+   and u.raw_app_meta_data->'farosocial_access'='true'::jsonb
+   and u.raw_app_meta_data->'farosocial_admin'='true'::jsonb
+   and (u.banned_until is null or u.banned_until < now())
+ ) then raise exception 'Acceso administrativo denegado' using errcode='42501'; end if;
+ if p_page is null or p_page<0 or p_page>10000 or p_plan is null
+  or p_plan not in ('all','free','pro','business') then
+  raise exception 'Filtro no válido' using errcode='22023'; end if;
+ select jsonb_build_object(
+  'workspaces',(select count(*) from public.faro_workspaces),
+  'brands',(select count(*) from public.faro_brands),
+  'connected',(select count(*) from public.faro_connections where status='connected'),
+  'incidents',(select count(*) from public.faro_connections where status in ('expired','error')),
+  'filtered',(select count(*) from public.faro_workspaces w where p_plan='all' or w.plan_code=p_plan),
+  'items',coalesce((select jsonb_agg(to_jsonb(x) order by x.created_at desc,x.id desc) from (
+    select w.id,w.name,w.plan_code,w.created_at,
+    (select count(*) from public.faro_brands b where b.workspace_id=w.id) as brands,
+    (select count(*) from public.faro_connections c join public.faro_brands b on b.id=c.brand_id where b.workspace_id=w.id and c.status='connected') as connected
+    from public.faro_workspaces w where p_plan='all' or w.plan_code=p_plan
+    order by w.created_at desc,w.id desc limit 25 offset p_page*25
+  ) x),'[]'::jsonb)
+ ) into result;
+ return result;
+end;
+$;
+revoke all on function faro_private.admin_report(integer,text) from public,anon,authenticated;
+grant execute on function faro_private.admin_report(integer,text) to authenticated;
+create function public.faro_admin_report(p_page integer,p_plan text)
+returns jsonb language sql security invoker stable set search_path='' as $
+ select faro_private.admin_report(p_page,p_plan);
+$;
+revoke all on function public.faro_admin_report(integer,text) from public,anon,authenticated;
+grant execute on function public.faro_admin_report(integer,text) to authenticated;
+
 commit;
