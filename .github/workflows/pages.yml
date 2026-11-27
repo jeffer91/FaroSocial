@@ -24,6 +24,8 @@ jobs:
           node --check assets/app.js
           node --check assets/cloud.js
           node --check assets/admin.js
+          node --check assets/editor.js
+          node --check assets/editor-core.js
           node --check assets/cloud-core.js
           node --check assets/cloud-config.js
           node --check server/index.mjs
@@ -32,7 +34,7 @@ jobs:
         run: |
           mkdir -p _site/assets
           cp index.html _site/
-          cp assets/style.css assets/app.js assets/cloud.js assets/cloud-core.js assets/cloud-config.js assets/admin.js _site/assets/
+          cp assets/style.css assets/app.js assets/cloud.js assets/cloud-core.js assets/cloud-config.js assets/admin.js assets/editor.js assets/editor-core.js _site/assets/
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v4
         with:

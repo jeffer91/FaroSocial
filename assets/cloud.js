@@ -1,3 +1,4 @@
+import {initEditor} from './editor.js';
 import {initAdmin} from './admin.js';
 import {config} from './cloud-config.js';
 import {cloudClient,validateConfig,beginGoogle,takeVerifier,CALLBACK} from './cloud-core.js';
@@ -7,10 +8,10 @@ export async function initCloud(){
  const q=new URLSearchParams(location.search),code=q.get('code'),callback=q.has('code')||q.has('error')||location.hash.includes('access_token=');
  if(callback)history.replaceState(null,'',location.pathname);
  if(!validateConfig(config)||location.origin+location.pathname!==CALLBACK){
-  $('cloud-status').textContent='Acceso con Google pendiente de configurar en el proyecto exclusivo de FaroSocial.';return;
+  $('cloud-status').textContent='Acceso con Google pendiente de configurar en el proyecto exclusivo de FaroSocial.';initEditor().showDemo();return;
  }
- const client=cloudClient(config);let busy=false,workspace=null,brands=[];const admin=initAdmin(client);
- function clearWorkspace(){workspace=null;brands=[];$('workspace-create').hidden=true;$('workspace-detail').hidden=true;$('brand-fields').disabled=true;$('workspace-create-fields').disabled=true;$('brand-list').replaceChildren();$('workspace-title').textContent='';$('workspace-plan').textContent='';}
+ const client=cloudClient(config);let busy=false,workspace=null,brands=[];const admin=initAdmin(client),editor=initEditor(client);
+ function clearWorkspace(){editor.reset();workspace=null;brands=[];$('workspace-create').hidden=true;$('workspace-detail').hidden=true;$('brand-fields').disabled=true;$('workspace-create-fields').disabled=true;$('brand-list').replaceChildren();$('workspace-title').textContent='';$('workspace-plan').textContent='';}
  function gate(open){document.body.classList.toggle('login-only',!open);$('cloud-login').hidden=open;$('cloud-account').hidden=!open;$('google-login').disabled=busy;if(!open){admin.reset();clearWorkspace();$('workspace-name').value='';$('brand-name').value='';$('cloud-user').textContent='';$('brand-status').textContent=''}}
  function freeSlot(){if(!workspace)return 0;const used=new Set(brands.map(b=>b.slot));for(let i=1;i<=workspace.faro_plans.max_brands;i++)if(!used.has(i))return i;return 0}
  async function refresh(){
@@ -21,7 +22,7 @@ export async function initCloud(){
    const w=rows[0],plan=w.faro_plans;if(!plan||!Number.isInteger(plan.max_brands)||plan.max_brands<1||plan.max_brands>100)throw Error();
    const data=await client.brands(w.id);if(!Array.isArray(data))throw Error();
    if(!client.isSignedIn())throw Error();
-   workspace=w;brands=data;$('workspace-title').textContent=w.name;
+   workspace=w;brands=data;editor.showBrands(brands);$('workspace-title').textContent=w.name;
    $('workspace-plan').textContent='Plan '+plan.name+' · '+brands.length+' de '+plan.max_brands+' marcas';
    for(const row of brands){const li=document.createElement('li');li.textContent=row.name;$('brand-list').append(li)}
    if(!brands.length){const li=document.createElement('li');li.textContent='Todavía no tienes marcas.';$('brand-list').append(li)}

@@ -1,4 +1,4 @@
--- Borrador SaaS 0.5 para un proyecto nuevo y exclusivo. No aplicado.
+-- Borrador SaaS 0.6 para un proyecto nuevo y exclusivo. No aplicado.
 begin;
 create table public.faro_plans (
  code text primary key check(code in ('free','pro','business')),
@@ -64,7 +64,7 @@ create schema faro_private;
 revoke all on schema faro_private from public,anon,authenticated;
 grant usage on schema faro_private to authenticated;
 create function faro_private.admin_report(p_page integer, p_plan text)
-returns jsonb language plpgsql security definer stable set search_path='' as $
+returns jsonb language plpgsql security definer stable set search_path='' as $faro$
 declare result jsonb;
 begin
  if auth.uid() is null or not exists (
@@ -93,14 +93,37 @@ begin
  ) into result;
  return result;
 end;
-$;
+$faro$;
 revoke all on function faro_private.admin_report(integer,text) from public,anon,authenticated;
 grant execute on function faro_private.admin_report(integer,text) to authenticated;
 create function public.faro_admin_report(p_page integer,p_plan text)
-returns jsonb language sql security invoker stable set search_path='' as $
+returns jsonb language sql security invoker stable set search_path='' as $faro$
  select faro_private.admin_report(p_page,p_plan);
-$;
+$faro$;
 revoke all on function public.faro_admin_report(integer,text) from public,anon,authenticated;
 grant execute on function public.faro_admin_report(integer,text) to authenticated;
+
+-- Borradores editoriales: jamás equivalen a publicaciones programadas.
+create table public.faro_drafts (
+ id uuid primary key,
+ brand_id uuid not null references public.faro_brands(id) on delete cascade,
+ title text not null check(length(trim(title)) between 1 and 100),
+ description text not null default '' check(length(description)<=2200),
+ platform_mask integer not null check(platform_mask between 1 and 15),
+ planned_date date check(planned_date between date '2000-01-01' and date '2099-12-31'),
+ planned_time time check(planned_time is null or planned_date is not null),
+ created_at timestamptz not null default now()
+);
+create index faro_drafts_brand_date on public.faro_drafts(brand_id,planned_date,id);
+alter table public.faro_drafts enable row level security;
+revoke all on public.faro_drafts from public,anon,authenticated;
+grant select on public.faro_drafts to authenticated;
+grant insert(id,brand_id,title,description,platform_mask,planned_date,planned_time) on public.faro_drafts to authenticated;
+grant update(title,description,platform_mask,planned_date,planned_time) on public.faro_drafts to authenticated;
+create policy drafts_read on public.faro_drafts for select to authenticated using (exists(select 1 from public.faro_brands b join public.faro_workspaces w on w.id=b.workspace_id where b.id=brand_id and w.owner_id=(select auth.uid())));
+create policy drafts_create on public.faro_drafts for insert to authenticated with check (exists(select 1 from public.faro_brands b join public.faro_workspaces w on w.id=b.workspace_id where b.id=brand_id and w.owner_id=(select auth.uid())));
+create policy drafts_edit on public.faro_drafts for update to authenticated
+ using (exists(select 1 from public.faro_brands b join public.faro_workspaces w on w.id=b.workspace_id where b.id=brand_id and w.owner_id=(select auth.uid())))
+ with check (exists(select 1 from public.faro_brands b join public.faro_workspaces w on w.id=b.workspace_id where b.id=brand_id and w.owner_id=(select auth.uid())));
 
 commit;
