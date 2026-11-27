@@ -38,5 +38,18 @@ La revocación puede retirar otros permisos concedidos al mismo proyecto de Goog
 - https://developers.tiktok.com/doc/content-sharing-guidelines/
 - https://developers.facebook.com/
 
-## Versión web 0.2: acceso y marcas
-Se preparó un módulo de inicio de sesión y creación/listado de marcas usando Supabase Auth y PostgREST, sin dependencias externas. No se habilita hasta registrar un proyecto exclusivo de FaroSocial, configurar su URL y clave publicable en assets/cloud-config.js y aplicar el borrador supabase/schema-draft.sql al proyecto correcto. Crear usuarios autorizados y desactivar registro público antes de habilitar el acceso. El token de sesión permanece en memoria (no en localStorage); al recargar hay que iniciar sesión otra vez. No se implementa aún renovación de sesión ni conexión social web. Las claves de servidor y tokens sociales nunca deben ir en el navegador. Antes del acceso real se recomienda un dominio exclusivo, ya que los sitios de GitHub Pages de una misma cuenta comparten origen. Verificar permisos con dos cuentas y una sesión anónima antes de publicar funciones de escritura.
+## Versión web 0.3: Google y marcas
+- Inicio de sesión exclusivo con Google a través de Supabase Auth, PKCE S256, sin contraseñas en la interfaz. No pide permisos de YouTube.
+- El verificador temporal de PKCE se guarda durante cinco minutos en sessionStorage y se consume al volver. Tokens de sesión solo en memoria, sin persistencia ni renovación automática. Al recargar o vencer la sesión hay que volver a ingresar.
+- El código y la pantalla están preparados; el acceso no está habilitado hasta configurar el proyecto dedicado de FaroSocial.
+
+### Activación
+1. Crear un proyecto exclusivo de FaroSocial y aplicar supabase/schema-draft.sql al proyecto correcto. Verificar RLS con dos cuentas y una sesión anónima.
+2. En Google Cloud, configurar Google Auth Platform con el nombre FaroSocial, audiencia de prueba y usuarios autorizados. Crear cliente OAuth de tipo web y registrar como URI de redirección https://<project-ref>.supabase.co/auth/v1/callback (usar el valor exacto que muestra Supabase).
+3. En Supabase Auth, habilitar Google, guardar Client ID y Client Secret en el panel de proveedor (nunca en GitHub). Configurar Site URL y URL de redirección exacta https://jeffer91.github.io/FaroSocial/. Evitar comodines.
+4. Autorizar la creación inicial de la identidad Google de los probadores. Tras su primer intento, un administrador debe asignar app_metadata.farosocial_access=true al usuario mediante la API administrativa de Auth; no usar user_metadata. El primer intento sin autorización será rechazado. Volver a iniciar sesión para recibir la nueva autorización. Desactivar proveedores no utilizados. Los datos quedan restringidos por RLS al propietario con permiso explícito; una identidad creada no implica acceso a los datos.
+5. Configurar solo URL de Supabase y clave publicable en assets/cloud-config.js. Nunca service_role, sb_secret ni secretos de Google.
+6. Antes de habilitar el acceso real, aislar el sitio con un dominio exclusivo y actualizar CALLBACK y las URLs en Google/Supabase según corresponda: GitHub Pages de la misma cuenta comparte origen entre repositorios. Verificar el flujo real, expiración, cierre, usuarios no autorizados y separación de cuentas. No es aún un despliegue de producción.
+7. La conexión de YouTube y las otras redes se autorizará después, por separado.
+
+Docs: https://supabase.com/docs/guides/auth/social-sign-in/auth-google y https://supabase.com/docs/guides/auth/sessions/pkce-flow
