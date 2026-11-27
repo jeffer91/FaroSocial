@@ -1,0 +1,6 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {validateConfig,cloudClient} from '../assets/cloud-core.js';
+const cfg={url:'https://example.supabase.co',publishableKey:'sb_publishable_example'};
+test('solo admite endpoint HTTPS de Supabase y clave publicable',()=>{assert.ok(validateConfig(cfg));for(const url of ['http://example.supabase.co','https://example.supabase.co.evil.test','https://example.supabase.co/path','https://a:b@example.supabase.co'])assert.equal(validateConfig({...cfg,url}),null);assert.equal(validateConfig({...cfg,publishableKey:'sb_secret_example'}),null)});
+test('peticiones autenticadas y aislamiento de la sesión local',async()=>{const calls=[];const mock=async(url,opt)=>{calls.push({url,opt});return {ok:true,status:200,json:async()=>url.includes('/token')?{access_token:'jwt-test',expires_in:3600,user:{id:'one',email:'test@example.org'}}:[]}};const client=cloudClient(cfg,mock);await assert.rejects(()=>client.brands());await client.signIn('test@example.org','fake-password');assert.equal(calls[0].opt.headers.Authorization,undefined);await client.brands();assert.equal(calls[1].opt.headers.Authorization,'Bearer jwt-test');await client.signOut();assert.equal(client.isSignedIn(),false);await assert.rejects(()=>client.brands())});

@@ -37,3 +37,6 @@ La revocación puede retirar otros permisos concedidos al mismo proyecto de Goog
 - https://developers.google.com/youtube/v3/docs/videos/insert
 - https://developers.tiktok.com/doc/content-sharing-guidelines/
 - https://developers.facebook.com/
+
+## Versión web 0.2: acceso y marcas
+Se preparó un módulo de inicio de sesión y creación/listado de marcas usando Supabase Auth y PostgREST, sin dependencias externas. No se habilita hasta registrar un proyecto exclusivo de FaroSocial, configurar su URL y clave publicable en assets/cloud-config.js y aplicar el borrador supabase/schema-draft.sql al proyecto correcto. Crear usuarios autorizados y desactivar registro público antes de habilitar el acceso. El token de sesión permanece en memoria (no en localStorage); al recargar hay que iniciar sesión otra vez. No se implementa aún renovación de sesión ni conexión social web. Las claves de servidor y tokens sociales nunca deben ir en el navegador. Antes del acceso real se recomienda un dominio exclusivo, ya que los sitios de GitHub Pages de una misma cuenta comparten origen. Verificar permisos con dos cuentas y una sesión anónima antes de publicar funciones de escritura.
