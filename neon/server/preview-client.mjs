@@ -2,7 +2,7 @@ import {createAuthClient} from '@neon/auth';
 const expected="https://br-damp-scene-bbnr2g7d-farosocialapi.compute.c-15.us-east-1.aws.neon.tech",authUrl="https://ep-noisy-cherry-bb524mc3.neonauth.c-15.us-east-1.aws.neon.tech/farosocial/auth";
 const $=id=>document.getElementById(id),status=$('status'),signin=$('sign-in'),verify=$('verify'),signout=$('sign-out');
 let busy=false,editing=null,previewUrl=null,youtubeReady=false,tiktokReady=false,metaReady={facebook:false,instagram:false},selection=null,queueDraft=null;
-const callbackProvider=/^\/oauth\/(youtube|facebook|instagram|tiktok)\/callback$/.exec(location.pathname)?.[1];const callback=callbackProvider?new URLSearchParams(location.search):null;if(callback)history.replaceState(null,'','/preview');
+const callbackProvider=/^\/oauth\/(youtube|facebook|instagram|tiktok)\/callback$/.exec(location.pathname)?.[1];const callback=callbackProvider?new URLSearchParams(location.search):null;if(callback)history.replaceState(null,'','/app');
 const dash=$('dashboard'),requestAccess=$('request-access');
 async function api(path,method='GET',body){const result=await client.token(),token=result.data?.token;if(result.error||typeof token!=='string')throw Error('Sesión no disponible');const r=await fetch(path,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),credentials:'omit',cache:'no-store',redirect:'error'});const json=await r.json();if(!r.ok)throw Error(json.error||'Solicitud rechazada');return json.data}
 function options(el,items){const prev=el.value;el.replaceChildren();for(const item of items)el.add(new Option(item.name,item.id));if(items.some(i=>i.id===prev))el.value=prev}
@@ -63,19 +63,19 @@ async function inspect(){
  dash.hidden=true;requestAccess.hidden=true;clearReport();clearQueue();clearSelection();clearMedia();$('media-list').replaceChildren();resetDraft();$('draft-list').replaceChildren();
  const session=await client.getSession();
  if(session.error)throw Error('No se pudo comprobar la sesión.');
- if(!session.data?.user){status.textContent='Sin sesión. Continúa con Google para realizar la prueba.';return}
+ if(!session.data?.user){location.replace('/login');return}
  const result=await client.token(),token=result.data?.token;
  if(result.error||typeof token!=='string')throw Error('No se pudo obtener el token de prueba.');
  const r=await fetch('/v1/me',{headers:{Authorization:'Bearer '+token},credentials:'omit',cache:'no-store',redirect:'error'});
- if(r.status===403){status.textContent='Identidad Google verificada. La cuenta todavía no está habilitada en FaroSocial. Solicita su habilitación al administrador.';requestAccess.hidden=false;return}
- if(r.status===401){status.textContent='La sesión de Google existe, pero el servidor rechazó el token. Acceso bloqueado.';return}
+ if(r.status===403){location.replace('/registro');return}
+ if(r.status===401){location.replace('/login');return}
  if(!r.ok){status.textContent='No se pudo consultar el servidor (HTTP '+r.status+').';return}
  const body=await r.json();
  if(!Array.isArray(body.data)||body.data.length!==1)throw Error('Respuesta inesperada.');
  await refresh();dash.hidden=false;status.textContent='Sesión y cuenta verificadas. Beta privada.';
 }
 async function run(action){if(busy||!client)return;controls(true);try{await action()}catch(e){status.textContent=e.message||'No se pudo completar la operación.'}finally{controls(false)}}
-signin.addEventListener('click',()=>run(async()=>{status.textContent='Abriendo autorización de Google…';const r=await client.signIn.social({provider:'google',callbackURL:expected+'/preview'});if(r?.error)throw Error('No se completó el acceso.');await inspect()}));
+signin.addEventListener('click',()=>run(async()=>{status.textContent='Abriendo autorización de Google…';const r=await client.signIn.social({provider:'google',callbackURL:expected+'/app'});if(r?.error)throw Error('No se completó el acceso.');await inspect()}));
 verify.addEventListener('click',()=>run(inspect));
-signout.addEventListener('click',()=>run(async()=>{dash.hidden=true;requestAccess.hidden=true;clearReport();clearSelection();clearMedia();resetDraft();$('draft-list').replaceChildren();const r=await client.signOut();if(r?.error)throw Error();await inspect()}));
+signout.addEventListener('click',()=>run(async()=>{dash.hidden=true;requestAccess.hidden=true;clearReport();clearSelection();clearMedia();resetDraft();$('draft-list').replaceChildren();const r=await client.signOut();if(r?.error)throw Error();location.replace('/login')}));
 if(client)run(async()=>{await inspect();if(callback){if(callback.has('error')){status.textContent='Autorización cancelada o rechazada.';return}if(!dash.hidden&&callback.get('code')&&callback.get('state')){const result=await api('/v1/'+callbackProvider+'/finish','POST',{code:callback.get('code'),state:callback.get('state')});if(callbackProvider==='youtube'||callbackProvider==='tiktok'){if([...$('brand-select').options].some(o=>o.value===result.brand_id))$('brand-select').value=result.brand_id;await socialList();await loadMedia();await drafts();status.textContent='Cuenta vinculada. No se ha publicado contenido.'}else{if([...$('brand-select').options].some(o=>o.value===result.brand_id))$('brand-select').value=result.brand_id;await socialList();await loadMedia();await drafts();selection={provider:callbackProvider,choice:result.choice};options($('meta-choice'),result.items.map(x=>({id:x.id,name:x.title})));$('meta-selection').hidden=false;status.textContent='Selecciona una cuenta para completar la conexión.'}}else status.textContent='Autorización incompleta. Vuelve a iniciar la conexión.'}});else status.textContent='Origen incorrecto. Acceso de prueba desactivado.';

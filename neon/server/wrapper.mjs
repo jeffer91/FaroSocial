@@ -4,7 +4,9 @@ const api=handler.default??handler;
 const authOrigin="https://ep-noisy-cherry-bb524mc3.neonauth.c-15.us-east-1.aws.neon.tech";
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self' "+authOrigin+"; frame-src "+authOrigin+"; img-src 'self' data: blob:; media-src 'self' blob:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"};
 export default {async fetch(req){const path=new URL(req.url).pathname;
- if(req.method==='GET'&&(path==='/preview'||path==='/oauth/youtube/callback'||path==='/oauth/facebook/callback'||path==='/oauth/instagram/callback'||path==='/oauth/tiktok/callback'||path==='/preview.js')){
+ if(req.method==='GET'&&['/login/','/registro/','/app/'].includes(path))return new Response(null,{status:303,headers:{...headers,Location:path.slice(0,-1)}});
+ if(req.method==='GET'&&['/login','/registro','/access.js'].includes(path)){const script=path==='/access.js';const body=await readFile(new URL(script?'access.js':'access.html',import.meta.url));return new Response(body,{headers:{...headers,'Content-Type':script?'text/javascript; charset=utf-8':'text/html; charset=utf-8'}})}
+ if(req.method==='GET'&&(path==='/app'||path==='/preview'||path==='/oauth/youtube/callback'||path==='/oauth/facebook/callback'||path==='/oauth/instagram/callback'||path==='/oauth/tiktok/callback'||path==='/preview.js')){
   const file=path==='/preview.js'?'preview.js':'preview.html';
   const body=await readFile(new URL(file,import.meta.url));
   return new Response(body,{headers:{...headers,'Content-Type':path==='/preview.js'?'text/javascript; charset=utf-8':'text/html; charset=utf-8'}});

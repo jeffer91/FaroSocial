@@ -38,7 +38,10 @@ jobs:
         run: |
           mkdir -p _site/assets
           cp index.html _site/
-          cp assets/style.css assets/app.js assets/cloud.js assets/cloud-core.js assets/cloud-config.js assets/admin.js assets/editor.js assets/editor-core.js assets/media.js assets/media-core.js assets/queue.js assets/queue-core.js _site/assets/
+          cp -R precios login registro app _site/
+          cp assets/marketing.css _site/assets/
+          node --check neon/server/preview-client.mjs
+          node --check neon/server/access-client.mjs
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v4
         with:

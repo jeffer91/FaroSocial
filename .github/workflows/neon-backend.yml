@@ -26,15 +26,17 @@ jobs:
           mkdir -p dist
           npx --no-install esbuild index.mjs --bundle --platform=node --target=node24 --format=cjs --outfile=dist/index.cjs
           cp wrapper.mjs dist/index.mjs
-          cp preview.html dist/preview.html
+          cp preview.html access.html dist/
+          npx --no-install esbuild access-client.mjs --bundle --platform=browser --target=es2022 --format=esm --minify --outfile=dist/access.js
+          node --check dist/access.js
           npx --no-install esbuild preview-client.mjs --bundle --platform=browser --target=es2022 --format=esm --minify --outfile=dist/preview.js
           node --check dist/preview.js
           node --check dist/index.mjs
           node --check dist/index.cjs
-          NEON_BRANCH_ID=br-damp-scene-bbnr2g7d NEON_AUTH_BASE_URL=https://auth.example.org/test/auth NEON_AUTH_JWKS_URL=https://auth.example.org/test/auth/.well-known/jwks.json DATABASE_URL=postgresql://invalid:invalid@localhost:5432/test node --input-type=module -e 'const {default:h}=await import("./dist/index.mjs"); const url="https://test.example.org"; for(const [path,status] of [["/health",200],["/v1/me",401],["/preview",200],["/preview.js",200],["/oauth/youtube/callback",200],["/oauth/facebook/callback",200],["/oauth/instagram/callback",200],["/oauth/tiktok/callback",200],["/v1/social-status",401],["/v1/queue?brand=123",401],["/v1/reports",401],["/v1/billing",401]]){const r=await h.fetch(new Request(url+path)); if(r.status!==status)throw Error("Unexpected status "+r.status); console.log(path+" "+r.status)}'
-          cd dist && zip -q ../function.zip index.mjs index.cjs preview.html preview.js
+          NEON_BRANCH_ID=br-damp-scene-bbnr2g7d NEON_AUTH_BASE_URL=https://auth.example.org/test/auth NEON_AUTH_JWKS_URL=https://auth.example.org/test/auth/.well-known/jwks.json DATABASE_URL=postgresql://invalid:invalid@localhost:5432/test node --input-type=module -e 'const {default:h}=await import("./dist/index.mjs"); const url="https://test.example.org"; for(const [path,status] of [["/health",200],["/v1/me",401],["/preview",200],["/login",200],["/registro",200],["/app",200],["/access.js",200],["/preview.js",200],["/oauth/youtube/callback",200],["/oauth/facebook/callback",200],["/oauth/instagram/callback",200],["/oauth/tiktok/callback",200],["/v1/social-status",401],["/v1/queue?brand=123",401],["/v1/reports",401],["/v1/billing",401]]){const r=await h.fetch(new Request(url+path)); if(r.status!==status)throw Error("Unexpected status "+r.status); console.log(path+" "+r.status)}'
+          cd dist && zip -q ../function.zip index.mjs index.cjs preview.html preview.js access.html access.js
       - name: One-time transfer of public build bytes
-        if: ${{ github.event.head_commit.message == 'FaroSocial 0.27.1 reparacion sintaxis panel' }}
+        if: ${{ github.event.head_commit.message == 'FaroSocial 0.28 portada y acceso independiente' }}
         working-directory: neon/server
         run: |
           python -c 'import base64,pathlib; b=base64.b64encode(pathlib.Path("function.zip").read_bytes()).decode(); print("\n".join("FAROZIP:%04d:%s"%(i//1000,b[i:i+1000]) for i in range(0,len(b),1000))); print("FAROZIP-END:"+str(len(b)))'

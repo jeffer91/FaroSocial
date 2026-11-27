@@ -8,7 +8,7 @@ if(password.length<16||!/^[0-9a-f]{64}$/i.test(key))throw Error('Configura FARO_
 const vault=createVault(fileURLToPath(new URL('../.data/',import.meta.url)),Buffer.from(key,'hex'));
 const yt=connector({id:process.env.GOOGLE_CLIENT_ID,secret:process.env.GOOGLE_CLIENT_SECRET,redirect:origin+'/oauth/youtube/callback',vault});
 const states=stateStore();let busy=false;
-const staticFiles={'/':['../index.html','text/html; charset=utf-8'],'/index.html':['../index.html','text/html; charset=utf-8'],'/assets/style.css':['../assets/style.css','text/css; charset=utf-8'],'/assets/app.js':['../assets/app.js','text/javascript; charset=utf-8']};
+const staticFiles={'/':['../local-demo.html','text/html; charset=utf-8'],'/index.html':['../local-demo.html','text/html; charset=utf-8'],'/assets/style.css':['../assets/style.css','text/css; charset=utf-8'],'/assets/app.js':['../assets/app.js','text/javascript; charset=utf-8']};
 function json(res,code,data){res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data))}
 function redirect(res,to,cookie){res.writeHead(303,{Location:to,...(cookie?{'Set-Cookie':cookie}:{})});res.end()}
 function session(req){return (req.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith('faro_session='))?.slice(13)||''}
