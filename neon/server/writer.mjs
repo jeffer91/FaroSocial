@@ -14,8 +14,8 @@ export function createWriter(pool){return async(subject,path,b,method)=>{
   if(path==='/v1/workspaces')result=await c.query("insert into faro.workspaces(owner_id,name) values($1,$2) returning id,name",[a.rows[0].id,b.name]);
   else if(path==='/v1/brands')result=await c.query("insert into faro.brands(workspace_id,slot,name) select w.id,s.slot,$2 from faro.workspaces w join faro.plans p on p.code=w.plan_code cross join lateral generate_series(1,p.max_brands) s(slot) where w.id=$1 and not exists(select 1 from faro.brands b where b.workspace_id=w.id and b.slot=s.slot) order by s.slot limit 1 returning id,name,slot",[b.workspace_id,b.name]);
   else if(path==='/v1/drafts'){
-   const args=[b.id,b.brand_id,b.title,b.description,b.platform_mask,b.planned_date,b.planned_time];
-   result=method==='PATCH'?await c.query("update faro.drafts set title=$3,description=$4,platform_mask=$5,planned_date=$6,planned_time=$7 where id=$1 and brand_id=$2 returning id",args):await c.query("insert into faro.drafts(id,brand_id,title,description,platform_mask,planned_date,planned_time) values($1,$2,$3,$4,$5,$6,$7) returning id",args);
+   const args=[b.id,b.brand_id,b.title,b.description,b.platform_mask,b.planned_date,b.planned_time,b.media_id];
+   result=method==='PATCH'?await c.query("update faro.drafts set title=$3,description=$4,platform_mask=$5,planned_date=$6,planned_time=$7,media_id=$8 where id=$1 and brand_id=$2 returning id",args):await c.query("insert into faro.drafts(id,brand_id,title,description,platform_mask,planned_date,planned_time,media_id) values($1,$2,$3,$4,$5,$6,$7,$8) returning id",args);
   }else throw Error('Unknown route');
   if(result.rowCount!==1){await c.query('rollback');return {status:409,error:'Recurso no disponible o cupo agotado'}}
   await c.query('commit');return {status:method==='PATCH'?200:201,data:result.rows[0]};

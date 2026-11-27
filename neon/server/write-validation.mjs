@@ -7,7 +7,7 @@ export function validateWrite(path,b){
  if(path==='/v1/access-request'){only([]);return {}}
  if(path==='/v1/workspaces'){only(['name']);if(!str(b.name,80))throw Error('Nombre inválido');return {name:b.name.trim()}}
  if(path==='/v1/brands'){only(['workspace_id','name']);if(!uuid.test(b.workspace_id||'')||!str(b.name,80))throw Error('Marca inválida');return {workspace_id:b.workspace_id,name:b.name.trim()}}
- if(path==='/v1/drafts'){only(['id','brand_id','title','description','platform_mask','planned_date','planned_time']);if(!uuid.test(b.id||'')||!uuid.test(b.brand_id||'')||!str(b.title,100)||typeof b.description!=='string'||b.description.length>2200||!Number.isInteger(b.platform_mask)||b.platform_mask<1||b.platform_mask>15||!(b.planned_date===null||validDate(b.planned_date))||!(b.planned_time===null||b.planned_date&&/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(b.planned_time)))throw Error('Borrador inválido');return {...b,title:b.title.trim(),description:b.description.trim()}}
+ if(path==='/v1/drafts'){only(['id','brand_id','title','description','platform_mask','planned_date','planned_time','media_id']);if(!uuid.test(b.id||'')||!uuid.test(b.brand_id||'')||!(b.media_id===undefined||b.media_id===null||typeof b.media_id==='string'&&uuid.test(b.media_id))||!str(b.title,100)||typeof b.description!=='string'||b.description.length>2200||!Number.isInteger(b.platform_mask)||b.platform_mask<1||b.platform_mask>15||!(b.planned_date===null||validDate(b.planned_date))||!(b.planned_time===null||b.planned_date&&/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(b.planned_time)))throw Error('Borrador inválido');return {...b,media_id:b.media_id??null,title:b.title.trim(),description:b.description.trim()}}
  throw Error('Ruta inválida')
 }
 export async function readJson(req){

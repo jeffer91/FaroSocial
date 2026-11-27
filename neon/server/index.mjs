@@ -1,3 +1,4 @@
+import {createMedia} from './media-service.mjs';
 import {createWriter} from './writer.mjs';
 import {createRemoteJWKSet,jwtVerify} from 'jose';
 import {Pool} from 'pg';
@@ -18,4 +19,4 @@ const authenticate=async token=>{
  // and audience binding must be verified before commercial deployment.
  return payload.sub;
 };
-export default createHandler({authenticate,read:createReader(pool),write:createWriter(pool),allowedOrigins:['https://br-damp-scene-bbnr2g7d-farosocialapi.compute.c-15.us-east-1.aws.neon.tech']});
+export default createHandler({authenticate,read:createReader(pool),write:createWriter(pool),media:createMedia(pool,env),allowedOrigins:['https://br-damp-scene-bbnr2g7d-farosocialapi.compute.c-15.us-east-1.aws.neon.tech']});
