@@ -5,17 +5,17 @@ import {tiktokStart,tiktokStatus} from './tiktok-delivery.mjs';
 import {tiktokRefresh} from './tiktok-oauth.mjs';
 import {permanent,unknown,safeRetry} from './delivery-common.mjs';
 // Dependencies must be supplied by a future job-scoped repository. No default external calls.
-export function createDispatcher({loadContext,saveCredentials,loadBytes,issueMedia,fetcher=fetch,enabled=false}={}){
+export function createDispatcher({loadContext,reserveRefresh,saveCredentials,loadBytes,issueMedia,fetcher=fetch,enabled=false}={}){
  return async job=>{
- if(!enabled||!job?.authorized_at||!job.lease_id||Date.parse(job.lease_expires_at)<=Date.now()||!job.payload?.consent||typeof loadContext!=='function')return permanent();
+ if(!enabled||!job?.authorized_at||!job.lease_id||Date.parse(job.lease_expires_at)<=Date.now()||job.payload?.consent!==true||typeof loadContext!=='function')return permanent();
  const p=job.payload.provider,stage=job.delivery_stage;
  let context;try{context=await loadContext(job)}catch{return job.provider_reference?unknown():safeRetry()}
  if(!context||context.status!=='connected'||context.provider!==p||context.connectionId!==job.connection_id||context.brandId!==job.brand_id||context.accountEnabled!==true)return permanent();
  let credentials=context.credentials;
  if(!credentials)return permanent();
  if(['youtube','tiktok'].includes(p)&&(!Number.isFinite(credentials.expires_at)||credentials.expires_at<=Date.now()+60000)){
-  if(typeof saveCredentials!=='function'||!context.config)return permanent();
-  try{const next=await (p==='youtube'?youtubeRefresh:tiktokRefresh)(context.config,credentials,fetcher);
+  if(typeof saveCredentials!=='function'||typeof reserveRefresh!=='function'||!context.config)return permanent();
+  try{if(await reserveRefresh(job,context.version)!==true)return unknown();const next=await (p==='youtube'?youtubeRefresh:tiktokRefresh)(context.config,credentials,fetcher);
    if(await saveCredentials(job,context.version,next)!==true)return unknown();credentials=next;
   }catch{return unknown()} // rotation could have occurred; don't blindly refresh again
  }
