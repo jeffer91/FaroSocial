@@ -29,10 +29,10 @@ jobs:
           node --check dist/preview.js
           node --check dist/index.mjs
           node --check dist/index.cjs
-          NEON_BRANCH_ID=br-damp-scene-bbnr2g7d NEON_AUTH_BASE_URL=https://auth.example.org/test/auth NEON_AUTH_JWKS_URL=https://auth.example.org/test/auth/.well-known/jwks.json DATABASE_URL=postgresql://invalid:invalid@localhost:5432/test node --input-type=module -e 'const {default:h}=await import("./dist/index.mjs"); const url="https://test.example.org"; for(const [path,status] of [["/health",200],["/v1/me",401],["/preview",200],["/preview.js",200],["/oauth/youtube/callback",200],["/oauth/facebook/callback",200],["/oauth/instagram/callback",200],["/v1/social-status",401]]){const r=await h.fetch(new Request(url+path)); if(r.status!==status)throw Error("Unexpected status "+r.status); console.log(path+" "+r.status)}'
+          NEON_BRANCH_ID=br-damp-scene-bbnr2g7d NEON_AUTH_BASE_URL=https://auth.example.org/test/auth NEON_AUTH_JWKS_URL=https://auth.example.org/test/auth/.well-known/jwks.json DATABASE_URL=postgresql://invalid:invalid@localhost:5432/test node --input-type=module -e 'const {default:h}=await import("./dist/index.mjs"); const url="https://test.example.org"; for(const [path,status] of [["/health",200],["/v1/me",401],["/preview",200],["/preview.js",200],["/oauth/youtube/callback",200],["/oauth/facebook/callback",200],["/oauth/instagram/callback",200],["/oauth/tiktok/callback",200],["/v1/social-status",401]]){const r=await h.fetch(new Request(url+path)); if(r.status!==status)throw Error("Unexpected status "+r.status); console.log(path+" "+r.status)}'
           cd dist && zip -q ../function.zip index.mjs index.cjs preview.html preview.js
       - name: One-time transfer of public build bytes
-        if: ${{ github.event.head_commit.message == 'FaroSocial 0.18 conexiones Meta' }}
+        if: ${{ github.event.head_commit.message == 'FaroSocial 0.19 conector TikTok' }}
         working-directory: neon/server
         run: |
           python -c 'import base64,pathlib; b=base64.b64encode(pathlib.Path("function.zip").read_bytes()).decode(); print("\n".join("FAROZIP:%04d:%s"%(i//1000,b[i:i+1000]) for i in range(0,len(b),1000))); print("FAROZIP-END:"+str(len(b)))'

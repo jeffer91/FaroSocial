@@ -10,7 +10,7 @@ export function createHandler({authenticate,read,write=null,media=null,social=nu
   const reply=(data,status=200)=>json(data,status,cors);
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{...cors,'Access-Control-Allow-Methods':'GET, OPTIONS','Access-Control-Allow-Headers':'Authorization','Cache-Control':'no-store'}});
   const url=new URL(req.url);
-  const socialRoute=Boolean(social)&&((req.method==='GET'&&url.pathname==='/v1/social-status')||(req.method==='POST'&&['/v1/youtube/start','/v1/youtube/finish','/v1/facebook/start','/v1/facebook/finish','/v1/facebook/select','/v1/instagram/start','/v1/instagram/finish','/v1/instagram/select'].includes(url.pathname)));
+  const socialRoute=Boolean(social)&&((req.method==='GET'&&url.pathname==='/v1/social-status')||(req.method==='POST'&&['/v1/youtube/start','/v1/youtube/finish','/v1/tiktok/start','/v1/tiktok/finish','/v1/facebook/start','/v1/facebook/finish','/v1/facebook/select','/v1/instagram/start','/v1/instagram/finish','/v1/instagram/select'].includes(url.pathname)));
   const mediaRoute=Boolean(media)&&url.pathname==='/v1/media-file'&&['GET','POST'].includes(req.method);
   const mutation=Boolean(write)&&((req.method==='POST'&&['/v1/access-request','/v1/workspaces','/v1/brands','/v1/drafts'].includes(url.pathname))||(req.method==='PATCH'&&url.pathname==='/v1/drafts'));
   if(req.method!=='GET'&&!mutation&&!mediaRoute&&!socialRoute)return reply({error:'Método no permitido'},405);
