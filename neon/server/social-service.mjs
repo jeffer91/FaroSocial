@@ -1,3 +1,5 @@
+import {metaConfig} from './meta-oauth.mjs';
+import {metaRoute} from './meta-service.mjs';
 import {authorization,config,hash,exchange,seal} from './youtube-oauth.mjs';
 import {readJson} from './write-validation.mjs';
 const UUID=/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
@@ -6,10 +8,11 @@ export function createSocial(pool,env){
  async function tx(subject,fn){const c=await pool.connect();let broken=false;try{await c.query('begin');await c.query("set local statement_timeout='5s'");await c.query('set local role faro_social');await c.query("select set_config('faro.subject',$1,true)",[subject]);const a=await c.query('select id from faro.accounts limit 1');if(a.rowCount!==1){await c.query('rollback');return null}const r=await fn(c,a.rows[0].id);await c.query('commit');return r}catch(e){try{await c.query('rollback')}catch{broken=true}throw e}finally{c.release(broken?true:undefined)}}
  return async(subject,req)=>{
  const c=config(env),path=new URL(req.url).pathname;
- if(path==='/v1/social-status'){const a=await tx(subject,async()=>true);return a?reply({data:{youtube:Boolean(c),facebook:false,instagram:false,tiktok:false}}):reply({error:'Cuenta no habilitada'},403)}
- if(!c)return reply({error:'YouTube pendiente de configuración comercial'},503);
+ if(path==='/v1/social-status'){const a=await tx(subject,async()=>true);return a?reply({data:{youtube:Boolean(c),facebook:Boolean(metaConfig(env)),instagram:Boolean(metaConfig(env)),tiktok:false}}):reply({error:'Cuenta no habilitada'},403)}
  let b;try{b=await readJson(req)}catch{return reply({error:'Datos inválidos'},400)}
  if(!b||typeof b!=='object'||Array.isArray(b))return reply({error:'Datos inválidos'},400);
+ if(/^\/v1\/(facebook|instagram)\//.test(path))return metaRoute({tx,env,subject,path,b});
+ if(!c)return reply({error:'YouTube pendiente de configuración comercial'},503);
  if(path==='/v1/youtube/start'){
   if(Object.keys(b).length!==1||typeof b.brand_id!=='string'||!UUID.test(b.brand_id))return reply({error:'Marca inválida'},400);
   const a=authorization(c);
