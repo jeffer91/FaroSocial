@@ -1,3 +1,4 @@
+import {createBilling} from './billing-service.mjs';
 import {createReports} from './report-service.mjs';
 import {createQueue} from './queue-service.mjs';
 import {createSocial} from './social-service.mjs';
@@ -22,4 +23,4 @@ const authenticate=async token=>{
  // and audience binding must be verified before commercial deployment.
  return payload.sub;
 };
-export default createHandler({authenticate,read:createReader(pool),write:createWriter(pool),media:createMedia(pool,env),social:createSocial(pool,env),queue:createQueue(pool),reports:createReports(pool),allowedOrigins:['https://br-damp-scene-bbnr2g7d-farosocialapi.compute.c-15.us-east-1.aws.neon.tech']});
+export default createHandler({authenticate,read:createReader(pool),write:createWriter(pool),media:createMedia(pool,env),social:createSocial(pool,env),queue:createQueue(pool),reports:createReports(pool),billing:createBilling(pool),allowedOrigins:['https://br-damp-scene-bbnr2g7d-farosocialapi.compute.c-15.us-east-1.aws.neon.tech']});
