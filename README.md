@@ -53,3 +53,6 @@ La revocación puede retirar otros permisos concedidos al mismo proyecto de Goog
 7. La conexión de YouTube y las otras redes se autorizará después, por separado.
 
 Docs: https://supabase.com/docs/guides/auth/social-sign-in/auth-google y https://supabase.com/docs/guides/auth/sessions/pkce-flow
+
+## Versión web 0.4: base SaaS
+El borrador SQL anterior, nunca aplicado, se reemplaza por espacios de trabajo, planes, marcas y conexiones. Cada cuenta beta autorizada puede crear un espacio Free; las marcas tienen slots únicos limitados por el plan y RLS por propietario. No se admiten pagos, equipos ni conexiones web. Los límites de publicaciones y conexiones son propuestas. Ver [arquitectura comercial](docs/saas-architecture.md). GitHub Pages es únicamente un entorno de prototipo; antes de producción usar alojamiento comercial y dominio exclusivo.

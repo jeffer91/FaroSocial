@@ -20,6 +20,7 @@ export function takeVerifier(storage,now=Date.now()){
  const raw=storage.getItem('farosocial.pkce.v1');storage.removeItem('farosocial.pkce.v1');
  try{const v=JSON.parse(raw);if(!v||! /^[A-Za-z0-9_-]{43}$/.test(v.verifier)||!Number.isFinite(v.expires)||now>=v.expires)return null;return v.verifier}catch{return null}
 }
+function requireId(id){if(typeof id!=='string'||! /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(id))throw Error('Identificador inválido');return id}
 export function cloudClient(config,fetcher=fetch){
  const c=validateConfig(config);
  if(!c)throw Error('Configuración pública pendiente');
@@ -42,7 +43,9 @@ export function cloudClient(config,fetcher=fetch){
   },
   async signOut(){try{if(session&&Date.now()<session.expiry)await request('/auth/v1/logout?scope=local',{method:'POST'})}finally{session=null}},
   isSignedIn(){return Boolean(session&&Date.now()<session.expiry)},
-  async brands(){return request('/rest/v1/faro_brands?select=id,name,created_at&order=created_at.desc')},
-  async createBrand(name){const n=name.trim();if(n.length<1||n.length>80)throw Error('Nombre inválido');return request('/rest/v1/faro_brands',{method:'POST',body:{name:n},headers:{Prefer:'return=minimal'}})}
+  async workspaces(){return request('/rest/v1/faro_workspaces?select=id,name,plan_code,faro_plans(name,max_brands,max_connections,max_monthly_posts)')},
+  async createWorkspace(name){const n=name.trim();if(n.length<1||n.length>80)throw Error('Nombre inválido');return request('/rest/v1/faro_workspaces',{method:'POST',body:{name:n},headers:{Prefer:'return=minimal'}})},
+  async brands(workspaceId){return request('/rest/v1/faro_brands?'+new URLSearchParams({select:'id,name,slot,created_at',workspace_id:'eq.'+requireId(workspaceId),order:'slot.asc'}))},
+  async createBrand(workspaceId,name,slot){const n=name.trim();if(n.length<1||n.length>80||!Number.isInteger(slot)||slot<1||slot>100)throw Error('Datos inválidos');return request('/rest/v1/faro_brands',{method:'POST',body:{workspace_id:requireId(workspaceId),name:n,slot},headers:{Prefer:'return=minimal'}})}
  };
 }
