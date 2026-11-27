@@ -1,0 +1,35 @@
+name: FaroSocial · Build Neon backend
+on:
+  push:
+    branches: [main]
+    paths: ['neon/server/**','test/neon-server.test.mjs','.github/workflows/neon-backend.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test test/neon-server.test.mjs
+      - name: Build development-only function
+        working-directory: neon/server
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          mkdir -p dist
+          npx --no-install esbuild index.mjs --bundle --platform=node --target=node24 --format=cjs --outfile=dist/index.cjs
+          printf 'import handler from "./index.cjs"; export default handler.default ?? handler;\n' > dist/index.mjs
+          node --check dist/index.mjs
+          node --check dist/index.cjs
+          cd dist && zip -q ../function.zip index.mjs index.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: farosocial-neon-dev
+          path: |
+            neon/server/function.zip
+            neon/server/package-lock.json
