@@ -1,3 +1,4 @@
+import {mediaPath,MIB} from './media-core.js';
 import {validateDraft,dateKey,monthDays} from './editor-core.js';
 export function validateConfig(config){
  try{
@@ -45,7 +46,20 @@ export function cloudClient(config,fetcher=fetch){
   async signOut(){try{if(session&&Date.now()<session.expiry)await request('/auth/v1/logout?scope=local',{method:'POST'})}finally{session=null}},
   isSignedIn(){return Boolean(session&&Date.now()<session.expiry)},
   async adminReport(page=0,plan='all'){if(!session?.admin)throw Error('Acceso administrativo denegado');if(!Number.isInteger(page)||page<0||page>10000||!['all','free','pro','business'].includes(plan))throw Error('Filtro inválido');return request('/rest/v1/rpc/faro_admin_report',{method:'POST',body:{p_page:page,p_plan:plan}})},
-  async drafts(brandId,year,month){monthDays(year,month);const start=dateKey(new Date(year,month,1)),end=dateKey(new Date(year,month+1,1));const q=new URLSearchParams({select:'id,brand_id,title,description,platform_mask,planned_date,planned_time',brand_id:'eq.'+requireId(brandId),or:'(planned_date.is.null,and(planned_date.gte.'+start+',planned_date.lt.'+end+'))',order:'planned_date.asc.nullslast,id.asc',limit:'201'});return request('/rest/v1/faro_drafts?'+q)},
+  async mediaList(brandId){return request('/rest/v1/faro_media?'+new URLSearchParams({select:'id,brand_id,name,mime_type,byte_size',brand_id:'eq.'+requireId(brandId),order:'created_at.desc,id.desc',limit:'101'}))},
+  async mediaBlob(brandId,item){
+   if(!session||Date.now()>=session.expiry)throw Error('Sesión no disponible');
+   if(item.brand_id!==brandId||!Number.isSafeInteger(item.byte_size)||item.byte_size<1||item.byte_size>(item.mime_type==='video/mp4'?30:10)*MIB)throw Error('Archivo inválido');
+   const path=mediaPath(brandId,item.id,item.mime_type),token=session.token;
+   const res=await fetcher(c.url+'/storage/v1/object/authenticated/faro-media/'+path,{method:'GET',redirect:'error',cache:'no-store',credentials:'omit',headers:{apikey:c.key,Authorization:'Bearer '+token},signal:AbortSignal.timeout(30000)});
+   if(!res.ok||res.headers.get('content-type')?.split(';')[0]!==item.mime_type)throw Error('Descarga no autorizada o formato inválido');
+   const length=Number(res.headers.get('content-length'));if(length&&length!==item.byte_size)throw Error('Tamaño inesperado');
+   if(!res.body)throw Error('Respuesta sin contenido');const reader=res.body.getReader(),chunks=[];let total=0;
+   try{while(true){const {done,value}=await reader.read();if(done)break;total+=value.byteLength;if(total>item.byte_size){await reader.cancel();throw Error('Tamaño inesperado')}chunks.push(value)}}finally{reader.releaseLock()}
+   if(total!==item.byte_size||session?.token!==token||Date.now()>=session.expiry)throw Error('Descarga no válida');
+   return new Blob(chunks,{type:item.mime_type});
+  },
+  async drafts(brandId,year,month){monthDays(year,month);const start=dateKey(new Date(year,month,1)),end=dateKey(new Date(year,month+1,1));const q=new URLSearchParams({select:'id,brand_id,title,description,platform_mask,planned_date,planned_time,media_id',brand_id:'eq.'+requireId(brandId),or:'(planned_date.is.null,and(planned_date.gte.'+start+',planned_date.lt.'+end+'))',order:'planned_date.asc.nullslast,id.asc',limit:'201'});return request('/rest/v1/faro_drafts?'+q)},
   async saveDraft(brandId,id,value,edit=false){const data=validateDraft(value);requireId(brandId);requireId(id);if(edit){const rows=await request('/rest/v1/faro_drafts?'+new URLSearchParams({id:'eq.'+id,brand_id:'eq.'+brandId,select:'id'}),{method:'PATCH',body:data,headers:{Prefer:'return=representation'}});if(!Array.isArray(rows)||rows.length!==1||rows[0].id!==id)throw Error('Actualización no confirmada');return rows[0]}return request('/rest/v1/faro_drafts',{method:'POST',body:{id,brand_id:brandId,...data},headers:{Prefer:'return=minimal'}})},
   async workspaces(){return request('/rest/v1/faro_workspaces?select=id,name,plan_code,faro_plans(name,max_brands,max_connections,max_monthly_posts)')},
   async createWorkspace(name){const n=name.trim();if(n.length<1||n.length>80)throw Error('Nombre inválido');return request('/rest/v1/faro_workspaces',{method:'POST',body:{name:n},headers:{Prefer:'return=minimal'}})},

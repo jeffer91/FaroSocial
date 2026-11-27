@@ -1,4 +1,4 @@
--- Borrador SaaS 0.6 para un proyecto nuevo y exclusivo. No aplicado.
+-- Borrador SaaS 0.7 para un proyecto nuevo y exclusivo. No aplicado.
 begin;
 create table public.faro_plans (
  code text primary key check(code in ('free','pro','business')),
@@ -125,5 +125,32 @@ create policy drafts_create on public.faro_drafts for insert to authenticated wi
 create policy drafts_edit on public.faro_drafts for update to authenticated
  using (exists(select 1 from public.faro_brands b join public.faro_workspaces w on w.id=b.workspace_id where b.id=brand_id and w.owner_id=(select auth.uid())))
  with check (exists(select 1 from public.faro_brands b join public.faro_workspaces w on w.id=b.workspace_id where b.id=brand_id and w.owner_id=(select auth.uid())));
+
+-- 0.7: metadatos de archivos validados por un futuro servicio de carga.
+create table public.faro_media (
+ id uuid primary key,
+ brand_id uuid not null references public.faro_brands(id) on delete cascade,
+ name text not null check(length(name) between 1 and 180),
+ mime_type text not null check(mime_type in ('image/jpeg','image/png','image/webp','video/mp4')),
+ byte_size integer not null check(byte_size>0 and byte_size<=case when mime_type='video/mp4' then 31457280 else 10485760 end),
+ storage_path text generated always as (brand_id::text||'/'||id::text||case mime_type when 'image/jpeg' then '.jpg' when 'image/png' then '.png' when 'image/webp' then '.webp' when 'video/mp4' then '.mp4' end) stored unique,
+ created_at timestamptz not null default now(),
+ unique(brand_id,id)
+);
+alter table public.faro_media enable row level security;
+revoke all on public.faro_media from public,anon,authenticated;
+grant select on public.faro_media to authenticated;
+create policy media_read on public.faro_media for select to authenticated
+ using (exists(select 1 from public.faro_brands b join public.faro_workspaces w on w.id=b.workspace_id where b.id=brand_id and w.owner_id=(select auth.uid())));
+alter table public.faro_drafts add column media_id uuid,
+ add constraint draft_media_same_brand foreign key(brand_id,media_id) references public.faro_media(brand_id,id);
+grant insert(media_id),update(media_id) on public.faro_drafts to authenticated;
+-- Crear el bucket privado en el panel/API oficial Storage, no modificar archivos mediante SQL.
+-- ID: faro-media; público: false; máximo: 31457280 bytes; MIME: image/jpeg,image/png,image/webp,video/mp4.
+-- Solo lectura autenticada para archivos registrados en la marca del usuario.
+create policy faro_media_storage_read on storage.objects for select to authenticated
+ using (bucket_id='faro-media' and exists(select 1 from public.faro_media m join public.faro_brands b on b.id=m.brand_id join public.faro_workspaces w on w.id=b.workspace_id where m.storage_path=storage.objects.name and w.owner_id=(select auth.uid())));
+-- No conceder INSERT, UPDATE ni DELETE sobre objetos de este bucket al cliente.
+-- La carga futura verifica identidad, propiedad, bytes reales, contenido, cuota, limpieza y estado de archivo.
 
 commit;
