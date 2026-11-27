@@ -3,6 +3,7 @@ export const queries=Object.freeze({
  '/v1/me':'select id,role from faro.accounts limit 1',
  '/v1/workspaces':'select w.id,w.name,w.plan_code,p.max_brands,p.max_connections,p.max_monthly_posts from faro.workspaces w join faro.plans p on p.code=w.plan_code order by w.created_at desc limit 100',
  '/v1/brands':'select id,name,slot,created_at from faro.brands where workspace_id=$1::uuid order by slot limit 100',
+ '/v1/connections':"select id,provider,display_name,status from faro.connections where brand_id=$1::uuid order by updated_at desc limit 100",
  '/v1/media':"select id,name,mime_type,byte_size from faro.media where brand_id=$1::uuid and upload_state='ready' order by created_at desc limit 100",
  '/v1/drafts':'select id,brand_id,title,description,platform_mask,planned_date,planned_time,media_id from faro.drafts where brand_id=$1::uuid order by created_at desc,id desc limit 200'
 });
