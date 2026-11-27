@@ -1,0 +1,14 @@
+import {PROVIDERS,enqueueDraft,claimJob,finishJob,cancelJob} from './queue-core.js';
+const $=id=>document.getElementById(id);
+const labels={queued:'En cola',retry:'Reintento pendiente',processing:'Procesando',succeeded:'Éxito simulado',review:'Revisión necesaria',failed:'Fallido',cancelled:'Cancelado'};
+export function initQueue(){
+ let jobs=[],mode='none',clock=Date.now(),brand='';
+ const panel=$('queue-panel'),status=$('queue-status');
+ function draw(){const list=$('queue-list');list.replaceChildren();$('queue-clock').textContent=new Date(clock).toISOString();const visible=jobs.filter(j=>j.brand_id===brand);for(const j of visible){const a=document.createElement('article'),h=document.createElement('strong'),p=document.createElement('p');h.textContent=j.title;p.textContent=PROVIDERS.find(x=>x.id===j.provider).name+' · '+labels[j.status]+' · Intentos '+j.attempts+' · UTC '+new Date(j.available_at).toISOString();a.append(h,p);if(['queued','retry'].includes(j.status)){const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent='Cancelar';b.addEventListener('click',()=>{jobs=jobs.map(x=>x.id===j.id?cancelJob(x):x);draw()});a.append(b)}list.append(a)}if(!visible.length){const p=document.createElement('p');p.textContent='No hay trabajos para esta marca.';list.append(p)}}
+ function reset(){jobs=[];mode='none';brand='';clock=Date.now();panel.hidden=true;status.textContent='';$('queue-list').replaceChildren()}
+ function show(next,id){mode=next;brand=id;panel.hidden=next==='none';$('queue-controls').hidden=next!=='demo';$('queue-mode').textContent=next==='demo'?'Simulación en memoria: ningún trabajo se envía a redes.':'Motor real pendiente de servidor, autorización y conectores. No se pueden programar envíos.';draw()}
+ function enqueue(draft){if(mode!=='demo'||draft.brand_id!==brand)return;try{jobs=enqueueDraft(jobs,draft,$('queue-offset').value,Math.max(clock,Date.now()));status.textContent='Trabajos añadidos a la cola de demostración.';draw()}catch(e){status.textContent=e.message}}
+ $('queue-advance').addEventListener('click',()=>{if(mode!=='demo')return;const due=jobs.filter(j=>j.brand_id===brand&&['queued','retry'].includes(j.status));if(!due.length){status.textContent='No hay trabajos pendientes.';return}clock=Math.max(clock,Math.min(...due.map(j=>j.available_at)));draw();status.textContent='Reloj de prueba avanzado; no se ha enviado nada.'});
+ $('queue-run').addEventListener('click',()=>{if(mode!=='demo')return;const next=jobs.find(j=>j.brand_id===brand&&['queued','retry'].includes(j.status)&&j.available_at<=clock);if(!next){status.textContent='No hay trabajos listos. Avanza el reloj de prueba.';return}const lease=crypto.randomUUID();const result=finishJob(claimJob(next,clock,lease),lease,$('queue-outcome').value,clock);jobs=jobs.map(j=>j.id===next.id?result:j);status.textContent='Resultado simulado: '+labels[result.status]+'.';draw()});
+ return {reset,show,enqueue};
+}
