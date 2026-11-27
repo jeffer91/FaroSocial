@@ -68,3 +68,6 @@ En GitHub Pages, la demo permite seleccionar archivos locales, previsualizarlos 
 
 ## Versión web 0.8: motor de cola (simulación)
 Desde un borrador guardado con fecha y hora futuras se pueden crear trabajos por red en la demo, eligiendo un desfase UTC explícito (no zona IANA ni ajuste automático de horario de verano). Avanzar el reloj y procesar un trabajo simula resultados. La máquina de estados limita reintentos a tres intentos totales, evita duplicados por borrador/red, permite cancelar trabajos pendientes y separa resultados inciertos para revisión. No hay envío ni temporizador real. La propuesta supabase/queue-draft.sql define persistencia privada futura; no se ha aplicado. Faltan servicio de encolado autenticado, cuotas, validación de pertenencia y conexión, trabajador transaccional, credenciales, reconciliación con proveedores, auditoría y pruebas SQL/concurrencia. No desplegar un cron de producción ni activar envíos todavía.
+
+## Etapa 0.9: infraestructura independiente
+Se ha creado y verificado una base PostgreSQL dedicada en Neon. El prototipo web 0.8 se mantiene en modo demo hasta adaptar la autenticación y el backend. Los SQL de Supabase no son ejecutables directamente en Neon. Ver [decisión y pasos de integración](docs/infrastructure-0.9.md).
