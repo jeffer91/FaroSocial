@@ -1,3 +1,4 @@
+import {createWriter} from './writer.mjs';
 import {createRemoteJWKSet,jwtVerify} from 'jose';
 import {Pool} from 'pg';
 import {createHandler} from './handler.mjs';
@@ -17,4 +18,4 @@ const authenticate=async token=>{
  // and audience binding must be verified before commercial deployment.
  return payload.sub;
 };
-export default createHandler({authenticate,read:createReader(pool),allowedOrigins:[]});
+export default createHandler({authenticate,read:createReader(pool),write:createWriter(pool),allowedOrigins:['https://br-damp-scene-bbnr2g7d-farosocialapi.compute.c-15.us-east-1.aws.neon.tech']});

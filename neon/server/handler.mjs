@@ -1,6 +1,7 @@
+import {validateWrite,readJson} from './write-validation.mjs';
 const UUID=/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 const json=(data,status=200,extra={})=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extra}});
-export function createHandler({authenticate,read,allowedOrigins=[]}){
+export function createHandler({authenticate,read,write=null,allowedOrigins=[]}){
  const origins=new Set(allowedOrigins);
  return {async fetch(req){
   const origin=req.headers.get('origin');
@@ -9,13 +10,15 @@ export function createHandler({authenticate,read,allowedOrigins=[]}){
   const reply=(data,status=200)=>json(data,status,cors);
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{...cors,'Access-Control-Allow-Methods':'GET, OPTIONS','Access-Control-Allow-Headers':'Authorization','Cache-Control':'no-store'}});
   const url=new URL(req.url);
-  if(req.method!=='GET')return reply({error:'Método no permitido'},405);
-  if(url.pathname==='/health')return reply({ok:true,mode:'development-readonly'});
+  const mutation=Boolean(write)&&((req.method==='POST'&&['/v1/access-request','/v1/workspaces','/v1/brands','/v1/drafts'].includes(url.pathname))||(req.method==='PATCH'&&url.pathname==='/v1/drafts'));
+  if(req.method!=='GET'&&!mutation)return reply({error:'Método no permitido'},405);
+  if(url.pathname==='/health')return reply({ok:true,mode:write?'development-beta':'development-readonly'});
   const routes=['/v1/me','/v1/workspaces','/v1/brands','/v1/drafts'];
-  if(!routes.includes(url.pathname))return reply({error:'No encontrado'},404);
+  if(!mutation&&!routes.includes(url.pathname))return reply({error:'No encontrado'},404);
   const m=/^Bearer ([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/.exec(req.headers.get('authorization')||'');
   if(!m||m[1].length>8192)return reply({error:'Autenticación requerida'},401);
   let subject;try{subject=await authenticate(m[1]);if(typeof subject!=='string'||!UUID.test(subject))throw Error()}catch{return reply({error:'Sesión no válida'},401)}
+  if(mutation){if(url.search)return reply({error:'Parámetros no permitidos'},400);let b;try{b=validateWrite(url.pathname,await readJson(req))}catch{return reply({error:'Datos inválidos'},400)}try{const r=await write(subject,url.pathname,b,req.method);return reply(r.error?{error:r.error}:{data:r.data},r.status)}catch{return reply({error:'Servicio no disponible'},503)}}
   const keys=[...url.searchParams.keys()];let id=null;
   if(url.pathname==='/v1/brands'||url.pathname==='/v1/drafts'){
    const key=url.pathname==='/v1/brands'?'workspace':'brand';

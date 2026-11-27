@@ -1,0 +1,2 @@
+# Beta privada 0.15
+Solicitud de acceso sin habilitación automática. El rol faro_api recibe permisos por columna únicamente para espacios, marcas y borradores propios, con RLS y cupos de marca. Sin credenciales de redes ni cargas ni cola activa. La página de desarrollo permite guardar datos solo tras aprobación de cuenta. Pendiente revisión de sesiones, cuotas adicionales, administración y producción. No activar clientes reales hasta las pruebas finales.
