@@ -4,7 +4,12 @@ Crea una vez. Publica en todas partes.
 
 Versión 0.1: aplicación independiente de Metricool, con interfaz en español y primer conector real para YouTube en entorno local de un solo operador. No es un servicio público listo para producción.
 
-## Inicio
+## GitHub Pages
+La interfaz pública se despliega en https://jeffer91.github.io/FaroSocial/ mediante GitHub Actions. En Settings > Pages > Source selecciona GitHub Actions. El flujo `pages.yml` comprueba el código y publica únicamente index.html y assets/; no incluye el servidor ni archivos de configuración privada. En Actions se puede verificar el despliegue o ejecutarlo manualmente.
+
+La página pública es una vista estática hasta integrar un backend HTTPS con autenticación. No se guardan tokens ni contraseñas en el navegador. No se debe exponer el servidor local existente ni intentar acceder a él desde Pages.
+
+## Inicio local
 Requiere Node.js 22 o posterior. No requiere paquetes externos.
 1. Copia .env.example a .env. Configura una contraseña larga y una clave de cifrado aleatoria: `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
 2. En Google Cloud crea un proyecto, habilita YouTube Data API v3, configura consentimiento OAuth y un cliente OAuth de tipo aplicación web. Registra exactamente http://localhost:8787/oauth/youtube/callback. Si está en modo pruebas, añade tu cuenta como usuario de prueba.
